@@ -1,10 +1,9 @@
 //! Conversion code to turn original `.srt` files into a (`cast.yaml`,  `assignments.yaml`, `content.txt`) triple
 pub mod steps;
 
-use backend::assignments::{AssignmentSet, OwnedAssignmentSet};
+use backend::assignments::{AssignmentUnit, OwnedAssignmentSet};
 use backend::cast::{Cast, CastMember};
 use pre_processor::setup_logging;
-use serde::Serialize;
 use std::ffi::OsStr;
 use std::io::Write;
 use std::{
@@ -66,7 +65,7 @@ fn main() {
     let cast: Cast = yaml_serde::from_reader(File::open(cast_filepath).unwrap()).unwrap();
 
     let mut content: String = String::new();
-    let mut assignments: AssignmentSet = AssignmentSet(Vec::new());
+    let mut assignments: OwnedAssignmentSet = OwnedAssignmentSet(Vec::new());
 
     // Store member who was previously speaking,
     // so that it can recognize
@@ -119,7 +118,11 @@ fn main() {
                 content.push('\n');
 
                 let timestamp = entry.timespan.start.msecs();
-                assignments.0.push((timestamp, HashSet::new()));
+                let assignment_unit = AssignmentUnit {
+                    time: timestamp,
+                    assignments: HashSet::new(),
+                };
+                assignments.0.push(assignment_unit);
                 continue;
             }
         };
@@ -138,7 +141,11 @@ fn main() {
             content.push_str(original_line.trim());
             content.push('\n');
             let timestamp = entry.timespan.start.msecs();
-            assignments.0.push((timestamp, HashSet::new()));
+            let assignment_unit = AssignmentUnit {
+                time: timestamp,
+                assignments: HashSet::new(),
+            };
+            assignments.0.push(assignment_unit);
             continue;
         };
 
@@ -154,12 +161,19 @@ fn main() {
 
         // Insert speaker into `assignments`
         match assignments.0.get_mut(i) {
-            Some((_t, a)) => a.insert(speaker.id.as_str().into()),
+            Some(AssignmentUnit {
+                time: _,
+                assignments,
+            }) => assignments.insert(speaker.id.as_str().into()),
             None => {
                 let mut set = HashSet::new();
                 let timestamp = entry.timespan.start.msecs();
                 set.insert(speaker.id.as_str().into());
-                assignments.0.push((timestamp, set));
+                let assignment_unit = AssignmentUnit {
+                    time: timestamp,
+                    assignments: set,
+                };
+                assignments.0.push(assignment_unit);
                 false
             }
         };
@@ -176,18 +190,8 @@ fn main() {
         .from_writer(assignment_file);
 
     for line_assignment in OwnedAssignmentSet::from(assignments).0 {
-        #[derive(Serialize)]
-        struct Record {
-            time: i64,
-            assignments: HashSet<String>
-        }
-        let record = Record {
-            time: line_assignment.0,
-            assignments: line_assignment.1,
-        };
-        csv_writer.serialize(record).unwrap();
+        csv_writer.serialize(line_assignment).unwrap();
     }
-    // yaml_serde::to_writer(assignment_file, &OwnedAssignmentSet::from(assignments)).unwrap();
 }
 
 fn flatten_subtitles(
