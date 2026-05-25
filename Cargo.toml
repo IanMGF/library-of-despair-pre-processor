@@ -4,3 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+log = "0.4.29"
+log4rs = "1.4.0"
+serde = { version = "1.0.228", features = ["derive"] }
+subparse = "0.7.0"
+yaml_serde = "0.10.4"
+backend = { path="../backend/" }
+csv = "1.4.0"
