@@ -11,7 +11,6 @@ use std::{
     env,
     fs::File,
     io::{BufReader, BufWriter, Read},
-    iter::Map,
     path::PathBuf,
     rc::Rc,
 };
@@ -29,6 +28,7 @@ fn main() {
     let srt_filepath = args.get(0).unwrap();
     let cast_filepath = args.get(1).unwrap();
 
+    // Warn if wrong extensions are detected
     if srt_filepath.extension().unwrap_or(OsStr::new("")) != OsStr::new("srt") {
         log::warn!(
             "Filepath '{}' does not have the '.srt' file format extension - Found extension: {}",
@@ -194,9 +194,7 @@ fn main() {
     }
 }
 
-fn flatten_subtitles(
-    e: SubtitleEntry,
-) -> Map<std::vec::IntoIter<String>, impl FnMut(String) -> SubtitleEntry> {
+fn flatten_subtitles(e: SubtitleEntry) -> impl Iterator<Item = SubtitleEntry> {
     let lines: Vec<String> = e.line.unwrap().split('\n').map(str::to_string).collect();
     lines.into_iter().map(move |line| SubtitleEntry {
         timespan: e.timespan,
