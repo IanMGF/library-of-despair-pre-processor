@@ -1,17 +1,17 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub enum SpeakerParseResult {
-    Expected(Rc<str>, Rc<str>),
-    ColonWithoutSpeech(Rc<str>),
-    NoColon(Rc<str>),
+    Expected(Arc<str>, Arc<str>),
+    ColonWithoutSpeech(Arc<str>),
+    NoColon(Arc<str>),
 }
 
 /// Processes a line by splitting off the first `:` character.
 /// Returns '(Some(speaker), line)` if a speaker is present and identified,
 /// and `(None, line)` otherwise
-pub fn parse_speaker(line: Rc<str>) -> SpeakerParseResult {
+pub fn parse_speaker(line: Arc<str>) -> SpeakerParseResult {
     let (speaker, processed_line) = match line.split_once(":") {
-        Some((a, b)) => (Rc::<str>::from(a.trim()), Rc::<str>::from(b.trim())),
+        Some((a, b)) => (Arc::<str>::from(a.trim()), Arc::<str>::from(b.trim())),
         None => return SpeakerParseResult::NoColon(line),
     };
 

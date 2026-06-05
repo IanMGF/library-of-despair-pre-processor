@@ -1,10 +1,10 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::steps::{PreProcessingCtx, PreProcessingStep};
 use pre_processor::parse_cast::{SpeakerParseResult, parse_speaker};
 
-type SpeakerAlias = Rc<str>;
-type Line = Rc<str>;
+type SpeakerAlias = Arc<str>;
+type Line = Arc<str>;
 
 pub struct Parser;
 impl PreProcessingStep<Line, (Option<SpeakerAlias>, Line)> for Parser {

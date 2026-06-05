@@ -1,18 +1,17 @@
 //! Conversion code to turn original `.srt` files into a (`cast.yaml`,  `assignments.yaml`, `content.txt`) triple
 pub mod steps;
 
-use backend::assignments::{AssignmentUnit, OwnedAssignmentSet};
-use backend::cast::{Cast, CastMember};
+use backend::archive::assignments::AssignmentUnit;
+use backend::archive::cast::{Cast, CastMember};
 use pre_processor::setup_logging;
 use std::ffi::OsStr;
 use std::io::Write;
+use std::sync::Arc;
 use std::{
-    collections::HashSet,
     env,
     fs::File,
     io::{BufReader, BufWriter, Read},
     path::PathBuf,
-    rc::Rc,
 };
 use subparse::{SrtFile, SubtitleEntry, SubtitleFileInterface};
 
@@ -25,8 +24,12 @@ fn main() {
     let args: Vec<PathBuf> = env::args().skip(1).map(PathBuf::from).collect();
     setup_logging();
 
-    let srt_filepath = args.get(0).unwrap();
-    let cast_filepath = args.get(1).unwrap();
+    let base_filepath = args.get(0).unwrap();
+
+    let srt_filepath = base_filepath.join("subtitles.srt");
+    let cast_filepath = base_filepath.join("cast.yaml");
+    let content_filepath = base_filepath.join("content.txt");
+    let assignment_filepath = base_filepath.join("assignment.csv");
 
     // Warn if wrong extensions are detected
     if srt_filepath.extension().unwrap_or(OsStr::new("")) != OsStr::new("srt") {
@@ -65,12 +68,12 @@ fn main() {
     let cast: Cast = yaml_serde::from_reader(File::open(cast_filepath).unwrap()).unwrap();
 
     let mut content: String = String::new();
-    let mut assignments: OwnedAssignmentSet = OwnedAssignmentSet(Vec::new());
+    let mut assignments_vec: Vec<AssignmentUnit> = vec![];
 
     // Store member who was previously speaking,
     // so that it can recognize
     // "Member: Line 1 \n Line2 \n Line3"
-    let mut prev_speaker: Option<Rc<CastMember>> = None;
+    let mut prev_speaker: Option<Arc<CastMember>> = None;
 
     let line_entry_iter = srt_file
         .get_subtitle_entries()
@@ -82,8 +85,8 @@ fn main() {
     for (i, entry) in line_entry_iter {
         let encloser_opt: Option<Encloser>;
         let ctx: PreProcessingCtx;
-        let og_line_rc: Rc<str>;
-        let line_rc: Rc<str>;
+        let og_line_rc: Arc<str>;
+        let line_rc: Arc<str>;
 
         // Store original line, for later retrieval in case the processing goes wrong
         let original_line = entry.line.clone().unwrap();
@@ -110,8 +113,8 @@ fn main() {
 
         // If current text does not have a proper speaker, assign the previous speaker
         let curr_speaker_tag = match (curr_speaker_tag, &prev_speaker) {
-            (Some(s), _) => s,
-            (None, Some(s)) => s.aliases[0].as_str().into(),
+            (Some(s), _) => vec![s],
+            (None, Some(s)) => s.aliases.clone(),
             (None, None) => {
                 log::warn!("Speaker undetected for line {}", i + 1);
                 content.push_str(line_rc.trim());
@@ -120,20 +123,20 @@ fn main() {
                 let timestamp = entry.timespan.start.msecs();
                 let assignment_unit = AssignmentUnit {
                     time: timestamp,
-                    assignments: HashSet::new(),
+                    assignments: Arc::new([]),
                 };
-                assignments.0.push(assignment_unit);
+                assignments_vec.push(assignment_unit);
                 continue;
             }
         };
 
         // Find the speaker
-        let speaker = FindCastMember::apply((curr_speaker_tag.clone(), &cast), &ctx);
+        let speaker = FindCastMember::apply((curr_speaker_tag[0].clone(), &cast), &ctx);
 
         // Guarantee the alias given was found in the cast file
         let Some(speaker) = speaker else {
             log::warn!(
-                "Alias not found:\tTimestamp:{:>16}  Line {:>5}  Alias:{}",
+                "Aliases not found:\tTimestamp:{:>16}  Line {:>5}  Aliases: {:?}",
                 entry.timespan.start,
                 i + 1,
                 curr_speaker_tag
@@ -143,9 +146,9 @@ fn main() {
             let timestamp = entry.timespan.start.msecs();
             let assignment_unit = AssignmentUnit {
                 time: timestamp,
-                assignments: HashSet::new(),
+                assignments: Arc::new([]),
             };
-            assignments.0.push(assignment_unit);
+            assignments_vec.push(assignment_unit);
             continue;
         };
 
@@ -160,36 +163,27 @@ fn main() {
         prev_speaker = Some(speaker.clone());
 
         // Insert speaker into `assignments`
-        match assignments.0.get_mut(i) {
-            Some(AssignmentUnit {
-                time: _,
-                assignments,
-            }) => assignments.insert(speaker.id.as_str().into()),
-            None => {
-                let mut set = HashSet::new();
-                let timestamp = entry.timespan.start.msecs();
-                set.insert(speaker.id.as_str().into());
-                let assignment_unit = AssignmentUnit {
-                    time: timestamp,
-                    assignments: set,
-                };
-                assignments.0.push(assignment_unit);
-                false
-            }
+        let mut set = Vec::new();
+        let timestamp = entry.timespan.start.msecs();
+        set.push(speaker.id.clone());
+        let assignment_unit = AssignmentUnit {
+            time: timestamp,
+            assignments: set.into(),
         };
+        assignments_vec.push(assignment_unit);
     }
 
-    let content_file: File = File::create("content.txt").unwrap();
+    let content_file: File = File::create(content_filepath).unwrap();
     let mut content_writer: BufWriter<File> = BufWriter::new(content_file);
     write!(content_writer, "{}", content).unwrap();
 
-    let assignment_file: File = File::create("assignment.csv").unwrap();
+    let assignment_file: File = File::create(assignment_filepath).unwrap();
     let mut csv_writer = csv::WriterBuilder::new()
         .flexible(true)
         .has_headers(false)
         .from_writer(assignment_file);
 
-    for line_assignment in OwnedAssignmentSet::from(assignments).0 {
+    for line_assignment in assignments_vec {
         csv_writer.serialize(line_assignment).unwrap();
     }
 }

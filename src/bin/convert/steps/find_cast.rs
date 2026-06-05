@@ -1,25 +1,25 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
-use backend::cast::{Cast, CastMember};
+use backend::archive::cast::{Cast, CastMember};
 
 use crate::steps::PreProcessingStep;
 
 pub struct FindCastMemberResult {
     pub text: Rc<str>,
-    pub cast_member: Option<Rc<CastMember>>,
+    pub cast_member: Option<Arc<CastMember>>,
 }
 
 pub struct FindCastMember;
-impl PreProcessingStep<(Rc<str>, &Cast), Option<Rc<CastMember>>> for FindCastMember {
+impl PreProcessingStep<(Arc<str>, &Cast), Option<Arc<CastMember>>> for FindCastMember {
     fn apply(
-        (line, Cast(cast_set)): (Rc<str>, &Cast),
+        (line, Cast(cast_set)): (Arc<str>, &Cast),
         _ctx: &super::PreProcessingCtx,
-    ) -> Option<Rc<CastMember>> {
-        let speaker: Option<Rc<backend::cast::CastMember>> = cast_set
+    ) -> Option<Arc<CastMember>> {
+        let speaker: Option<Arc<backend::archive::cast::CastMember>> = cast_set
             .iter()
-            .filter(|&member| member.aliases.contains(&line.to_string()))
+            .filter(|&member| member.aliases.iter().any(|s| s.as_ref() == line.as_ref()))
             .next()
-            .map(|member_ref| Rc::new(member_ref.clone()));
+            .map(|member_ref| Arc::new(member_ref.clone()));
 
         speaker
     }

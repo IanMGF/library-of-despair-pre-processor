@@ -1,7 +1,7 @@
 //! Step to remove enclosing characters,
 //! such as parethenses, brackets, etc.
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::steps::PreProcessingStep;
 
@@ -27,11 +27,11 @@ impl Encloser {
 
 pub struct RemovedEncloserResult {
     pub encloser: Option<Encloser>,
-    pub text: Rc<str>,
+    pub text: Arc<str>,
 }
 
-impl PreProcessingStep<Rc<str>, RemovedEncloserResult> for RemoveEnclosers {
-    fn apply(input: Rc<str>, _ctx: &super::PreProcessingCtx) -> RemovedEncloserResult {
+impl PreProcessingStep<Arc<str>, RemovedEncloserResult> for RemoveEnclosers {
+    fn apply(input: Arc<str>, _ctx: &super::PreProcessingCtx) -> RemovedEncloserResult {
         if input.starts_with('(') && input.ends_with(')') {
             RemovedEncloserResult {
                 encloser: Some(Encloser::Parenthesis),
