@@ -24,7 +24,3 @@ impl PreProcessingStep<Line, (Option<SpeakerAlias>, Line)> for Parser {
         }
     }
 }
-
-// Cellbit: Muito boa noite
-// Speaker: "Cellbit"
-// Texto: "Muito boa noite"
