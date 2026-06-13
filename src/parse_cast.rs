@@ -21,5 +21,5 @@ pub fn parse_speaker(line: Arc<str>) -> SpeakerParseResult {
         return SpeakerParseResult::ColonWithoutSpeech(line);
     }
 
-    return SpeakerParseResult::Expected(speaker, processed_line);
+    SpeakerParseResult::Expected(speaker, processed_line)
 }

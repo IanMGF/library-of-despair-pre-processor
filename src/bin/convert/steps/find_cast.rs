@@ -17,8 +17,7 @@ impl PreProcessingStep<(Arc<str>, &Cast), Option<Arc<CastMember>>> for FindCastM
     ) -> Option<Arc<CastMember>> {
         let speaker: Option<Arc<backend::archive::cast::CastMember>> = cast_set
             .iter()
-            .filter(|&member| member.aliases.iter().any(|s| s.as_ref() == line.as_ref()))
-            .next()
+            .find(|&member| member.aliases.iter().any(|s| s.as_ref() == line.as_ref()))
             .map(|member_ref| Arc::new(member_ref.clone()));
 
         speaker

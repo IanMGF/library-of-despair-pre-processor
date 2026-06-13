@@ -24,7 +24,7 @@ fn main() {
     let args: Vec<PathBuf> = env::args().skip(1).map(PathBuf::from).collect();
     setup_logging();
 
-    let base_filepath = args.get(0).unwrap();
+    let base_filepath = args.first().unwrap();
 
     let srt_filepath = base_filepath.join("subtitles.srt");
     let cast_filepath = base_filepath.join("cast.yaml");
@@ -84,19 +84,15 @@ fn main() {
 
     for (i, entry) in line_entry_iter {
         let encloser_opt: Option<Encloser>;
-        let ctx: PreProcessingCtx;
-        let og_line_rc: Arc<str>;
         let line_rc: Arc<str>;
-
-        // Store original line, for later retrieval in case the processing goes wrong
-        let original_line = entry.line.clone().unwrap();
-
-        ctx = PreProcessingCtx {
+        let og_line_rc: Arc<str> = entry.line.as_ref().unwrap().as_str().into();
+        let ctx: PreProcessingCtx = PreProcessingCtx {
             subtitle_entry: &entry,
             line_number: i,
         };
 
-        og_line_rc = entry.line.as_ref().unwrap().as_str().into();
+        // Store original line, for later retrieval in case the processing goes wrong
+        let original_line = entry.line.clone().unwrap();
 
         // Remove enclosers and reassign text
         RemovedEncloserResult {

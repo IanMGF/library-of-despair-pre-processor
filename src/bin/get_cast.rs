@@ -26,10 +26,9 @@ use subparse::{SrtFile, SubtitleFileInterface};
 pub fn main() {
     setup_logging();
 
-    let filepath = PathBuf::from(env::args().skip(1).next().unwrap());
+    let filepath = PathBuf::from(env::args().nth(1).unwrap());
     let comparing_cast: Cast = env::args()
-        .skip(2)
-        .next()
+        .nth(2)
         .map(PathBuf::from)
         .map(File::open)
         .map(Result::unwrap)
