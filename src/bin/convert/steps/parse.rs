@@ -14,7 +14,7 @@ impl PreProcessingStep<Line, (Option<SpeakerAlias>, Line)> for Parser {
             SpeakerParseResult::ColonWithoutSpeech(line) => {
                 log::info!(
                     "Empty Colon:\t\tTimestamp:{}  Line {:>5}  Text:{}",
-                    ctx.subtitle_entry.timespan.start,
+                    ctx.subtitle.start_time,
                     ctx.line_number + 1,
                     line
                 );

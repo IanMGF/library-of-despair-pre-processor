@@ -3,17 +3,13 @@ pub mod steps;
 
 use backend::archive::assignments::AssignmentUnit;
 use backend::archive::cast::{Cast, CastMember};
+use pre_processor::flatten_subtitles::flatten_subtitles;
 use pre_processor::setup_logging;
+use srtlib::Subtitles;
 use std::ffi::OsStr;
 use std::io::Write;
 use std::sync::Arc;
-use std::{
-    env,
-    fs::File,
-    io::{BufReader, BufWriter, Read},
-    path::PathBuf,
-};
-use subparse::{SrtFile, SubtitleEntry, SubtitleFileInterface};
+use std::{env, fs::File, io::BufWriter, path::PathBuf};
 
 use crate::steps::enclosers::{Encloser, RemoveEnclosers, RemovedEncloserResult};
 use crate::steps::find_cast::FindCastMember;
@@ -56,13 +52,7 @@ fn main() {
     }
 
     // Load SRT file
-    let subtitle_file: File = File::open(srt_filepath).unwrap();
-    let mut subtitle_content: String = String::new();
-    let mut subtitle_reader = BufReader::new(subtitle_file);
-    subtitle_reader
-        .read_to_string(&mut subtitle_content)
-        .unwrap();
-    let srt_file: SrtFile = SrtFile::parse(&subtitle_content).unwrap();
+    let subtitles: Subtitles = Subtitles::parse_from_file(&srt_filepath, Some("utf8")).unwrap();
 
     // Load YAML Cast file
     let cast: Cast = yaml_serde::from_reader(File::open(cast_filepath).unwrap()).unwrap();
@@ -75,9 +65,7 @@ fn main() {
     // "Member: Line 1 \n Line2 \n Line3"
     let mut prev_speaker: Option<Arc<CastMember>> = None;
 
-    let line_entry_iter = srt_file
-        .get_subtitle_entries()
-        .unwrap()
+    let line_entry_iter = subtitles
         .into_iter()
         .flat_map(flatten_subtitles)
         .enumerate();
@@ -85,14 +73,14 @@ fn main() {
     for (i, entry) in line_entry_iter {
         let encloser_opt: Option<Encloser>;
         let line_rc: Arc<str>;
-        let og_line_rc: Arc<str> = entry.line.as_ref().unwrap().as_str().into();
+        let og_line_rc: Arc<str> = entry.text.clone().into();
         let ctx: PreProcessingCtx = PreProcessingCtx {
-            subtitle_entry: &entry,
+            subtitle: &entry,
             line_number: i,
         };
 
         // Store original line, for later retrieval in case the processing goes wrong
-        let original_line = entry.line.clone().unwrap();
+        let original_line = entry.text.clone();
 
         // Remove enclosers and reassign text
         RemovedEncloserResult {
@@ -116,7 +104,10 @@ fn main() {
                 content.push_str(line_rc.trim());
                 content.push('\n');
 
-                let timestamp = entry.timespan.start.msecs();
+                let timestamp = {
+                    let t = entry.start_time.get();
+                    t.0 as i64 * 3600 + t.1 as i64 * 60 + t.2 as i64
+                };
                 let assignment_unit = AssignmentUnit {
                     time: timestamp,
                     assignments: Arc::new([]),
@@ -133,13 +124,16 @@ fn main() {
         let Some(speaker) = speaker else {
             log::warn!(
                 "Aliases not found:\tTimestamp:{:>16}  Line {:>5}  Aliases: {:?}",
-                entry.timespan.start,
+                entry.start_time,
                 i + 1,
                 curr_speaker_tag
             );
             content.push_str(original_line.trim());
             content.push('\n');
-            let timestamp = entry.timespan.start.msecs();
+            let timestamp = {
+                let t = entry.start_time.get();
+                t.0 as i64 * 3600 + t.1 as i64 * 60 + t.2 as i64
+            };
             let assignment_unit = AssignmentUnit {
                 time: timestamp,
                 assignments: Arc::new([]),
@@ -160,7 +154,10 @@ fn main() {
 
         // Insert speaker into `assignments`
         let mut set = Vec::new();
-        let timestamp = entry.timespan.start.msecs();
+        let timestamp = {
+            let t = entry.start_time.get();
+            t.0 as i64 * 3600 + t.1 as i64 * 60 + t.2 as i64
+        };
         set.push(speaker.id.clone());
         let assignment_unit = AssignmentUnit {
             time: timestamp,
@@ -182,12 +179,4 @@ fn main() {
     for line_assignment in assignments_vec {
         csv_writer.serialize(line_assignment).unwrap();
     }
-}
-
-fn flatten_subtitles(e: SubtitleEntry) -> impl Iterator<Item = SubtitleEntry> {
-    let lines: Vec<String> = e.line.unwrap().split('\n').map(str::to_string).collect();
-    lines.into_iter().map(move |line| SubtitleEntry {
-        timespan: e.timespan,
-        line: Some(line),
-    })
 }

@@ -1,4 +1,4 @@
-use subparse::SubtitleEntry;
+use srtlib::Subtitle;
 
 pub trait PreProcessingStep<T, U> {
     fn apply(input: T, ctx: &PreProcessingCtx) -> U;
@@ -6,7 +6,7 @@ pub trait PreProcessingStep<T, U> {
 
 #[derive(Clone, Copy)]
 pub struct PreProcessingCtx<'a> {
-    pub subtitle_entry: &'a SubtitleEntry,
+    pub subtitle: &'a Subtitle,
     pub line_number: usize,
 }
 

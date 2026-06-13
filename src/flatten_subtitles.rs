@@ -1,10 +1,14 @@
-use subparse::SubtitleEntry;
+use srtlib::Subtitle;
 
 /// Returns an iterator that yields each line of the subtitle entry as a separate entry
-pub fn flatten_subtitles(e: SubtitleEntry) -> impl Iterator<Item = SubtitleEntry> {
-    let lines: Vec<String> = e.line.unwrap().split('\n').map(str::to_string).collect();
-    lines.into_iter().map(move |line| SubtitleEntry {
-        timespan: e.timespan,
-        line: Some(line),
+pub fn flatten_subtitles(e: Subtitle) -> impl Iterator<Item = Subtitle> {
+    let lines: Vec<String> = e.text.split('\n').map(str::to_string).collect();
+    lines.into_iter().map(move |line| Subtitle {
+        // timespan: e.timespan,
+        // line: Some(line),
+        num: e.num,
+        start_time: e.start_time,
+        end_time: e.end_time,
+        text: line,
     })
 }
