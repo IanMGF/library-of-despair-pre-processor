@@ -6,15 +6,9 @@
 //! This code has the merely auxiliary purpose of allowing
 //! the developers to quickly see all mentioned "speakers" (also referred to as "cast members")
 
-use std::{
-    collections::HashSet,
-    env,
-    fs::File,
-    path::PathBuf,
-    sync::Arc,
-};
+use std::{collections::HashSet, env, fs::File, path::PathBuf, sync::Arc};
 
-use backend::archive::cast::Cast;
+use common_types::archive::cast::Cast;
 use pre_processor::{
     parse_cast::{self, parse_speaker},
     setup_logging,

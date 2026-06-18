@@ -1,6 +1,6 @@
 use std::{rc::Rc, sync::Arc};
 
-use backend::archive::cast::{Cast, CastMember};
+use common_types::archive::cast::{Cast, CastMember};
 
 use crate::steps::PreProcessingStep;
 
@@ -15,7 +15,7 @@ impl PreProcessingStep<(Arc<str>, &Cast), Option<Arc<CastMember>>> for FindCastM
         (line, Cast(cast_set)): (Arc<str>, &Cast),
         _ctx: &super::PreProcessingCtx,
     ) -> Option<Arc<CastMember>> {
-        let speaker: Option<Arc<backend::archive::cast::CastMember>> = cast_set
+        let speaker: Option<Arc<common_types::archive::cast::CastMember>> = cast_set
             .iter()
             .find(|&member| member.aliases.iter().any(|s| s.as_ref() == line.as_ref()))
             .map(|member_ref| Arc::new(member_ref.clone()));

@@ -1,8 +1,8 @@
 //! Conversion code to turn original `.srt` files into a (`cast.yaml`,  `assignments.yaml`, `content.txt`) triple
 pub mod steps;
 
-use backend::archive::assignments::AssignmentUnit;
-use backend::archive::cast::{Cast, CastMember};
+use common_types::archive::assignments::AssignmentUnit;
+use common_types::archive::cast::{Cast, CastMember};
 use pre_processor::flatten_subtitles::flatten_subtitles;
 use pre_processor::setup_logging;
 use srtlib::Subtitles;

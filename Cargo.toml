@@ -8,6 +8,6 @@ log = "0.4.29"
 log4rs = "1.4.0"
 serde = { version = "1.0.228", features = ["derive"] }
 yaml_serde = "0.10.4"
-backend = { path="../backend/" }
+common_types = { git = "https://gitlab.com/biblioteca-do-desespero/common-types" }
 csv = "1.4.0"
 srtlib = "0.2.0"
